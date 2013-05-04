@@ -2,7 +2,7 @@
 //  AppDelegate.m
 //  TwistedCuboid
 //
-//  Created by Tanaka Ryuta on 5/4/13.
+//  Created by KuumaLab on 5/4/13.
 //  Copyright (c) 2013 kuuma Production. All rights reserved.
 //
 

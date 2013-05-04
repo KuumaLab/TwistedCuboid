@@ -1,9 +1,9 @@
 //
 //  ViewController.m
-//  TwistedCuboid
+//  Template
 //
-//  Created by Tanaka Ryuta on 5/4/13.
-//  Copyright (c) 2013 kuuma Production. All rights reserved.
+//  Created by KuumaLab on 5/4/13.
+//  Copyright (c) 2013 __KuumaLab__. All rights reserved.
 //
 
 #import "ViewController.h"
@@ -15,6 +15,7 @@ enum
 {
     UNIFORM_MODELVIEWPROJECTION_MATRIX,
     UNIFORM_NORMAL_MATRIX,
+    UNIFORM_TWIST_ANGLE,
     NUM_UNIFORMS
 };
 GLint uniforms[NUM_UNIFORMS];
@@ -27,53 +28,6 @@ enum
     NUM_ATTRIBUTES
 };
 
-GLfloat gCubeVertexData[216] = 
-{
-    // Data layout for each line below is:
-    // positionX, positionY, positionZ,     normalX, normalY, normalZ,
-    0.5f, -0.5f, -0.5f,        1.0f, 0.0f, 0.0f,
-    0.5f, 0.5f, -0.5f,         1.0f, 0.0f, 0.0f,
-    0.5f, -0.5f, 0.5f,         1.0f, 0.0f, 0.0f,
-    0.5f, -0.5f, 0.5f,         1.0f, 0.0f, 0.0f,
-    0.5f, 0.5f, -0.5f,          1.0f, 0.0f, 0.0f,
-    0.5f, 0.5f, 0.5f,         1.0f, 0.0f, 0.0f,
-    
-    0.5f, 0.5f, -0.5f,         0.0f, 1.0f, 0.0f,
-    -0.5f, 0.5f, -0.5f,        0.0f, 1.0f, 0.0f,
-    0.5f, 0.5f, 0.5f,          0.0f, 1.0f, 0.0f,
-    0.5f, 0.5f, 0.5f,          0.0f, 1.0f, 0.0f,
-    -0.5f, 0.5f, -0.5f,        0.0f, 1.0f, 0.0f,
-    -0.5f, 0.5f, 0.5f,         0.0f, 1.0f, 0.0f,
-    
-    -0.5f, 0.5f, -0.5f,        -1.0f, 0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,       -1.0f, 0.0f, 0.0f,
-    -0.5f, 0.5f, 0.5f,         -1.0f, 0.0f, 0.0f,
-    -0.5f, 0.5f, 0.5f,         -1.0f, 0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,       -1.0f, 0.0f, 0.0f,
-    -0.5f, -0.5f, 0.5f,        -1.0f, 0.0f, 0.0f,
-    
-    -0.5f, -0.5f, -0.5f,       0.0f, -1.0f, 0.0f,
-    0.5f, -0.5f, -0.5f,        0.0f, -1.0f, 0.0f,
-    -0.5f, -0.5f, 0.5f,        0.0f, -1.0f, 0.0f,
-    -0.5f, -0.5f, 0.5f,        0.0f, -1.0f, 0.0f,
-    0.5f, -0.5f, -0.5f,        0.0f, -1.0f, 0.0f,
-    0.5f, -0.5f, 0.5f,         0.0f, -1.0f, 0.0f,
-    
-    0.5f, 0.5f, 0.5f,          0.0f, 0.0f, 1.0f,
-    -0.5f, 0.5f, 0.5f,         0.0f, 0.0f, 1.0f,
-    0.5f, -0.5f, 0.5f,         0.0f, 0.0f, 1.0f,
-    0.5f, -0.5f, 0.5f,         0.0f, 0.0f, 1.0f,
-    -0.5f, 0.5f, 0.5f,         0.0f, 0.0f, 1.0f,
-    -0.5f, -0.5f, 0.5f,        0.0f, 0.0f, 1.0f,
-    
-    0.5f, -0.5f, -0.5f,        0.0f, 0.0f, -1.0f,
-    -0.5f, -0.5f, -0.5f,       0.0f, 0.0f, -1.0f,
-    0.5f, 0.5f, -0.5f,         0.0f, 0.0f, -1.0f,
-    0.5f, 0.5f, -0.5f,         0.0f, 0.0f, -1.0f,
-    -0.5f, -0.5f, -0.5f,       0.0f, 0.0f, -1.0f,
-    -0.5f, 0.5f, -0.5f,        0.0f, 0.0f, -1.0f
-};
-
 @interface ViewController () {
     GLuint _program;
     
@@ -83,9 +37,14 @@ GLfloat gCubeVertexData[216] =
     
     GLuint _vertexArray;
     GLuint _vertexBuffer;
+    GLuint _vertexIndices;
+    int _indicesNum;
+    
+    CGPoint _touch_point;
+    float _twistAngle;
+    BOOL _touchEnded;
 }
 @property (strong, nonatomic) EAGLContext *context;
-@property (strong, nonatomic) GLKBaseEffect *effect;
 
 - (void)setupGL;
 - (void)tearDownGL;
@@ -98,12 +57,14 @@ GLfloat gCubeVertexData[216] =
 
 @implementation ViewController
 
+@synthesize context = _context;
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
     
     self.context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
-
+    
     if (!self.context) {
         NSLog(@"Failed to create ES context");
     }
@@ -112,34 +73,37 @@ GLfloat gCubeVertexData[216] =
     view.context = self.context;
     view.drawableDepthFormat = GLKViewDrawableDepthFormat24;
     
+    _twistAngle = 0.0;
+    _touchEnded = NO;
+    
     [self setupGL];
 }
 
-- (void)dealloc
-{    
+- (void)viewDidUnload
+{
+    [super viewDidUnload];
+    
     [self tearDownGL];
     
     if ([EAGLContext currentContext] == self.context) {
         [EAGLContext setCurrentContext:nil];
     }
+	self.context = nil;
 }
 
 - (void)didReceiveMemoryWarning
 {
     [super didReceiveMemoryWarning];
+    // Release any cached data, images, etc. that aren't in use.
+}
 
-    if ([self isViewLoaded] && ([[self view] window] == nil)) {
-        self.view = nil;
-        
-        [self tearDownGL];
-        
-        if ([EAGLContext currentContext] == self.context) {
-            [EAGLContext setCurrentContext:nil];
-        }
-        self.context = nil;
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
+{
+    if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
+        return (interfaceOrientation != UIInterfaceOrientationPortraitUpsideDown);
+    } else {
+        return YES;
     }
-
-    // Dispose of any resources that can be recreated.
 }
 
 - (void)setupGL
@@ -148,25 +112,101 @@ GLfloat gCubeVertexData[216] =
     
     [self loadShaders];
     
-    self.effect = [[GLKBaseEffect alloc] init];
-    self.effect.light0.enabled = GL_TRUE;
-    self.effect.light0.diffuseColor = GLKVector4Make(1.0f, 0.4f, 0.4f, 1.0f);
-    
     glEnable(GL_DEPTH_TEST);
     
+    int divisionLevelLength = 128;
+    int divisionLevelRound = 8;
+    int size = sizeof(GLfloat) * divisionLevelLength * divisionLevelRound * 2 * (3 + 3) ;
+    GLfloat *array = (GLfloat *)malloc(size);
+    
+    int index=0;
+    float diameter = 1.0;
+    float length = 3.0;
+    for (int j=0; j<divisionLevelRound; j++) {
+        
+        float degree1 = GLKMathDegreesToRadians(j * 360/divisionLevelRound);
+        float degree2 = GLKMathDegreesToRadians((j+1) * 360/divisionLevelRound);
+        
+        float sin_degree1 = sinf(degree1);
+        float cos_degree1 = cosf(degree1);
+        float sin_degree2 = sinf(degree2);
+        float cos_degree2 = cosf(degree2);
+        
+        float normalDegree = GLKMathDegreesToRadians(j * 360.0/divisionLevelRound + 360.0/(2.0*divisionLevelRound));
+        float sin_normalDegree = sinf(normalDegree);
+        float cos_normalDegree = cosf(normalDegree);
+        
+        for (int i=0; i<divisionLevelLength; i++) {
+            
+            //vertices
+            array[index  ] = -length/4.0 + i*length/(float)divisionLevelLength;
+            array[index+1] = diameter/2.0 * sin_degree1;
+            array[index+2] = diameter/2.0 * cos_degree1;
+            
+            array[index+6] = -length/4.0 + i*length/(float)divisionLevelLength;
+            array[index+7] = diameter/2.0 * sin_degree2;
+            array[index+8] = diameter/2.0 * cos_degree2;
+            
+            if( j==0) NSLog(@"%f", array[index]);
+            
+            //normal
+            array[index+3] = 0.0;
+            array[index+4] = sin_normalDegree;
+            array[index+5] = cos_normalDegree;
+            
+            array[index+9] = 0.0;
+            array[index+10] = sin_normalDegree;
+            array[index+11] = cos_normalDegree;
+            
+            index +=12;
+        }
+    }
+    
+    ////////////INDICES///////////
+    _indicesNum = (divisionLevelLength-1) * divisionLevelRound * 3 * 2;
+    int sizeOfIndices = sizeof(GLshort) * _indicesNum;
+    GLshort *indices = (GLshort *)malloc(sizeOfIndices);
+    index = 0;
+    for (int i=0; i<divisionLevelRound; i++) {
+        
+        int l = i*(divisionLevelLength * 2);
+        
+        for (int j=0; j<(divisionLevelLength-1); j++) {
+            indices[index  ] = l+j;
+            indices[index+1] = l+j+1;
+            indices[index+2] = l+j+2;
+            
+            indices[index+3] = l+j+1;
+            indices[index+4] = l+j+2;
+            indices[index+5] = l+j+3;
+            
+            index +=6;
+        }
+    }
+    
+    //////////Indices Buffer/////////
+    glGenBuffers(1, &_vertexIndices);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _vertexIndices);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeOfIndices, indices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    
+    ///////
     glGenVertexArraysOES(1, &_vertexArray);
     glBindVertexArrayOES(_vertexArray);
     
     glGenBuffers(1, &_vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, _vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(gCubeVertexData), gCubeVertexData, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, size, array, GL_STATIC_DRAW);
     
     glEnableVertexAttribArray(GLKVertexAttribPosition);
-    glVertexAttribPointer(GLKVertexAttribPosition, 3, GL_FLOAT, GL_FALSE, 24, BUFFER_OFFSET(0));
+    glVertexAttribPointer(GLKVertexAttribPosition, 3, GL_FLOAT, GL_FALSE, 24, (GLvoid*)(sizeof(GLfloat) * 0));
     glEnableVertexAttribArray(GLKVertexAttribNormal);
-    glVertexAttribPointer(GLKVertexAttribNormal, 3, GL_FLOAT, GL_FALSE, 24, BUFFER_OFFSET(12));
+    glVertexAttribPointer(GLKVertexAttribNormal, 3, GL_FLOAT, GL_FALSE, 24, (GLvoid*)(sizeof(GLfloat) * 3));
     
     glBindVertexArrayOES(0);
+    
+    free(array);
+    free(indices);
 }
 
 - (void)tearDownGL
@@ -175,8 +215,6 @@ GLfloat gCubeVertexData[216] =
     
     glDeleteBuffers(1, &_vertexBuffer);
     glDeleteVertexArraysOES(1, &_vertexArray);
-    
-    self.effect = nil;
     
     if (_program) {
         glDeleteProgram(_program);
@@ -191,28 +229,29 @@ GLfloat gCubeVertexData[216] =
     float aspect = fabsf(self.view.bounds.size.width / self.view.bounds.size.height);
     GLKMatrix4 projectionMatrix = GLKMatrix4MakePerspective(GLKMathDegreesToRadians(65.0f), aspect, 0.1f, 100.0f);
     
-    self.effect.transform.projectionMatrix = projectionMatrix;
+    //self.effect.transform.projectionMatrix = projectionMatrix;
     
-    GLKMatrix4 baseModelViewMatrix = GLKMatrix4MakeTranslation(0.0f, 0.0f, -4.0f);
-    baseModelViewMatrix = GLKMatrix4Rotate(baseModelViewMatrix, _rotation, 0.0f, 1.0f, 0.0f);
+    GLKMatrix4 baseModelViewMatrix = GLKMatrix4MakeTranslation(0.0f, 0.0f, -2.0f);
+    //baseModelViewMatrix = GLKMatrix4Rotate(baseModelViewMatrix, _rotation, 0.0f, 1.0f, 0.0f);
     
-    // Compute the model view matrix for the object rendered with GLKit
-    GLKMatrix4 modelViewMatrix = GLKMatrix4MakeTranslation(0.0f, 0.0f, -1.5f);
-    modelViewMatrix = GLKMatrix4Rotate(modelViewMatrix, _rotation, 1.0f, 1.0f, 1.0f);
-    modelViewMatrix = GLKMatrix4Multiply(baseModelViewMatrix, modelViewMatrix);
     
-    self.effect.transform.modelviewMatrix = modelViewMatrix;
     
     // Compute the model view matrix for the object rendered with ES2
-    modelViewMatrix = GLKMatrix4MakeTranslation(0.0f, 0.0f, 1.5f);
-    modelViewMatrix = GLKMatrix4Rotate(modelViewMatrix, _rotation, 1.0f, 1.0f, 1.0f);
+    GLKMatrix4 modelViewMatrix;
+    //modelViewMatrix = GLKMatrix4MakeTranslation(0.0f, 0.0f, 0.0f);
+    modelViewMatrix = GLKMatrix4MakeRotation(_rotation, 10.0f, 0.0f, 0.0f);
     modelViewMatrix = GLKMatrix4Multiply(baseModelViewMatrix, modelViewMatrix);
     
     _normalMatrix = GLKMatrix3InvertAndTranspose(GLKMatrix4GetMatrix3(modelViewMatrix), NULL);
     
     _modelViewProjectionMatrix = GLKMatrix4Multiply(projectionMatrix, modelViewMatrix);
     
-    _rotation += self.timeSinceLastUpdate * 0.5f;
+    _rotation += self.timeSinceLastUpdate * 0.5;
+    
+    if (_touchEnded && _twistAngle > 0.0) {
+        _twistAngle -= self.timeSinceLastUpdate * 3.0 * 2.0 * M_PI;
+        _twistAngle = (_twistAngle < 0.0) ? 0.0 : _twistAngle;
+    };
 }
 
 - (void)glkView:(GLKView *)view drawInRect:(CGRect)rect
@@ -222,18 +261,17 @@ GLfloat gCubeVertexData[216] =
     
     glBindVertexArrayOES(_vertexArray);
     
-    // Render the object with GLKit
-    [self.effect prepareToDraw];
-    
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-    
     // Render the object again with ES2
     glUseProgram(_program);
     
     glUniformMatrix4fv(uniforms[UNIFORM_MODELVIEWPROJECTION_MATRIX], 1, 0, _modelViewProjectionMatrix.m);
     glUniformMatrix3fv(uniforms[UNIFORM_NORMAL_MATRIX], 1, 0, _normalMatrix.m);
+    glUniform1f(uniforms[UNIFORM_TWIST_ANGLE], _twistAngle);
     
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    //glDrawArrays(GL_TRIANGLES, 0, 36);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _vertexIndices);
+    glDrawElements(GL_TRIANGLES, _indicesNum, GL_UNSIGNED_SHORT, 0);
 }
 
 #pragma mark -  OpenGL ES 2 shader compilation
@@ -268,8 +306,8 @@ GLfloat gCubeVertexData[216] =
     
     // Bind attribute locations.
     // This needs to be done prior to linking.
-    glBindAttribLocation(_program, GLKVertexAttribPosition, "position");
-    glBindAttribLocation(_program, GLKVertexAttribNormal, "normal");
+    glBindAttribLocation(_program, ATTRIB_VERTEX, "position");
+    glBindAttribLocation(_program, ATTRIB_NORMAL, "normal");
     
     // Link program.
     if (![self linkProgram:_program]) {
@@ -294,6 +332,7 @@ GLfloat gCubeVertexData[216] =
     // Get uniform locations.
     uniforms[UNIFORM_MODELVIEWPROJECTION_MATRIX] = glGetUniformLocation(_program, "modelViewProjectionMatrix");
     uniforms[UNIFORM_NORMAL_MATRIX] = glGetUniformLocation(_program, "normalMatrix");
+    uniforms[UNIFORM_TWIST_ANGLE] = glGetUniformLocation(_program, "twistAngle");
     
     // Release vertex and fragment shaders.
     if (vertShader) {
@@ -386,6 +425,41 @@ GLfloat gCubeVertexData[216] =
     }
     
     return YES;
+}
+
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
+    
+    /////////////////////////////////////////////////////////
+    ///////     CHECKING IF BUTTON IS PRESSED      //////////
+    /////////////////////////////////////////////////////////
+    for (UITouch *touch in touches) {
+		_touch_point = [touch locationInView:self.view];
+    }
+    
+    _touchEnded = NO;
+}
+
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
+    //NSLog(@"touch ended");
+    _touchEnded = YES;
+}
+
+- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event {
+    NSLog(@"touch cancelled");
+}
+
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
+    
+    for (UITouch *touch in touches) {
+		CGPoint currentLocation = [touch locationInView:self.view];
+        CGPoint previousLocation = _touch_point;//[touch previousLocationInView:self.view];
+        
+        
+        CGFloat y = previousLocation.y - currentLocation.y;
+        _twistAngle = 3.0 * 2.0 * M_PI * y/self.view.bounds.size.height;
+        NSLog(@"height %f", self.view.bounds.size.height);
+        
+    }
 }
 
 @end

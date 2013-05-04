@@ -248,9 +248,14 @@ enum
     
     _rotation += self.timeSinceLastUpdate * 0.5;
     
-    if (_touchEnded && _twistAngle > 0.0) {
-        _twistAngle -= self.timeSinceLastUpdate * 3.0 * 2.0 * M_PI;
-        _twistAngle = (_twistAngle < 0.0) ? 0.0 : _twistAngle;
+    if (_touchEnded && fabsf(_twistAngle) > 0.0) {
+        if (_twistAngle>0.0) {
+            _twistAngle -= self.timeSinceLastUpdate * 3.0 * 2.0 * M_PI;
+            _twistAngle = (_twistAngle < 0.0) ? 0.0 : _twistAngle;
+        } else {
+            _twistAngle += self.timeSinceLastUpdate * 3.0 * 2.0 * M_PI;
+            _twistAngle = (_twistAngle > 0.0) ? 0.0 : _twistAngle;
+        }
     };
 }
 
@@ -456,7 +461,7 @@ enum
         
         
         CGFloat y = previousLocation.y - currentLocation.y;
-        _twistAngle = 3.0 * 2.0 * M_PI * y/self.view.bounds.size.height;
+        _twistAngle = -3.0 * 2.0 * M_PI * y/self.view.bounds.size.height;
         NSLog(@"height %f", self.view.bounds.size.height);
         
     }
